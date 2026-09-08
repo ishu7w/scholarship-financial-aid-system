@@ -188,7 +188,7 @@ export default function FinancialAidView({
     <div className="mx-auto max-w-none space-y-6">
       {demo && (
         <p className="text-xs text-muted">
-          Demo workspace · Illustrative programs · Payment records only
+          Shared demo workspace · Use sample information only · Online records may reset · No real payments
         </p>
       )}
       <AidEntrance>

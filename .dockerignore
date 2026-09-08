@@ -1,0 +1,10 @@
+.git
+.env*
+.next
+.vercel
+node_modules
+backend/target
+backend/data
+*.mv.db
+*.trace.db
+.superdesign

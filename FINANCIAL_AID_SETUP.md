@@ -72,6 +72,12 @@ Every `/api/aid/*` request must carry the server-generated signed identity heade
 
 ## Deployment boundary
 
-The combined launcher runs Java and Next.js on one machine. Java binds to loopback. A frontend-only Vercel deployment cannot run this Java JAR or keep its H2 file; production deployment requires a host/container with both processes and a persistent disk, or a separately secured Java service with appropriate network configuration. Live auth and original external integrations were not tested with user credentials.
+### Vercel classroom demo
+
+`vercel.json` deploys a container service using `Dockerfile.vercel`. The image builds Java and Next.js, then runs both with `scripts/demo-container.mjs`. Only Next.js is exposed; Java listens on loopback with a freshly generated shared signing secret. No local environment files or database records enter the image.
+
+This is a shared, synthetic-data demo. H2 uses `/tmp/scholarai-demo`, so records can reset on container replacement and are not shared between scaled instances. It is not suitable for real student applications. The original scholarship features use their existing no-account demo mode. No external database account is required.
+
+For durable production use, the combined launcher runs Java and Next.js on one machine. Java binds to loopback. A frontend-only Vercel deployment cannot run this Java JAR or keep its H2 file; durable deployment requires a host/container with both processes and a persistent disk, or a separately secured Java service with appropriate network configuration. Live auth and original external integrations were not tested with user credentials.
 
 This is a separate project with independent Git history. The source repository `../ScholarAI` remains untouched. The new GitHub repository is `ishu7w/scholarship-financial-aid-system`; never configure the original ScholarAI repository as a push target.
