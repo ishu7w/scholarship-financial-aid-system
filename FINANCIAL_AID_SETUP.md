@@ -2,13 +2,16 @@
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 22.23.2 with npm 10.9.8 (matching `.nvmrc` and GitHub CI)
 - JDK 17+ (Java 21 LTS is a suitable choice)
 - Maven 3.9+
+
+Regenerate the dependency lockfile using this Node/npm version. A lockfile produced by npm 11 can resolve nested optional esbuild dependencies differently and be rejected by npm 10 in CI.
 
 The browser UI remains the existing Next.js app. Financial aid rules and persistence run in a separate Java process.
 
 ```sh
+nvm use              # when using nvm; run nvm install first if needed
 npm ci
 npm run dev
 ```

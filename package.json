@@ -55,5 +55,6 @@
     "tsx": "^4.23.1",
     "typescript": "^5",
     "vitest": "^4.1.10"
-  }
+  },
+  "packageManager": "npm@10.9.8"
 }
