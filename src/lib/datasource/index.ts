@@ -1,13 +1,8 @@
-// ─────────────────────────────────────────────────────────────
-// DataSource — the single seam between the UI and where data
-// lives. `demo` reproduces today's in-memory behavior exactly;
-// `live` reads Postgres via Drizzle. Pages/route handlers call
-// getDataSource() and never import data.ts or db directly.
-// ─────────────────────────────────────────────────────────────
+// Frontend response contracts. JavaDataSource forwards reads to the Java modules.
 
 import "server-only";
 import type { AIScore, Scholarship, StudentProfile } from "@/lib/types";
-import { hasDatabase } from "@/lib/env";
+
 
 export type ApplicationStatus =
   | "draft"
@@ -116,16 +111,7 @@ export interface DataSource {
   getDocuments(studentId: string): Promise<DocumentSummary[]>;
 }
 
-let _ds: DataSource | null = null;
-
 export async function getDataSource(): Promise<DataSource> {
-  if (_ds) return _ds;
-  if (hasDatabase()) {
-    const { LiveDataSource } = await import("./live");
-    _ds = new LiveDataSource();
-  } else {
-    const { DemoDataSource } = await import("./demo");
-    _ds = new DemoDataSource();
-  }
-  return _ds;
+  const { JavaDataSource } = await import("./java");
+  return new JavaDataSource();
 }

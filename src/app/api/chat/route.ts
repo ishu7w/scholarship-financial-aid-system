@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
   const { message, history = [] } = parsed.data;
 
   // Grounding is built from the session identity, never from the body.
-  const ctx = await buildCopilotContext(me);
+  const ctx = await buildCopilotContext();
 
   if (hasAnthropic()) {
     const reply = await anthropicAnswer(message, history, ctx);
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    reply: toReply(deterministicAnswer(message, ctx)),
+    reply: toReply(await deterministicAnswer(message)),
     source: "deterministic",
   });
 }

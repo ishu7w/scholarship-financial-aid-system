@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth/guard";
 import { isLiveMode } from "@/lib/env";
-import { javaAidRequest } from "@/lib/financial-aid/java-client";
+import { javaHttpRequest } from "@/lib/java/http";
 import type { AidRecord, AidProgram } from "@/lib/financial-aid/contracts";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import DashboardShell from "@/components/layout/DashboardShell";
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function FinancialAidPage() {
   const user = await requireUser("/financial-aid");
   const [records, programs] = await Promise.all([
-    javaAidRequest<AidRecord[]>(user, "/api/aid/applications"),
-    javaAidRequest<AidProgram[]>(user, "/api/aid/programs"),
+    javaHttpRequest<AidRecord[]>(user, "/api/aid/applications"),
+    javaHttpRequest<AidProgram[]>(user, "/api/aid/programs"),
   ]);
   return (
     <SessionProvider user={user}>

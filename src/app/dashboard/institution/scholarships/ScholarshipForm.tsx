@@ -54,7 +54,7 @@ export default function ScholarshipForm({
     setError(null);
     setSaved(false);
     const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd.entries());
+    const payload: Record<string, FormDataEntryValue | boolean> = Object.fromEntries(fd.entries());
     // Unchecked checkboxes are absent from FormData.
     for (const k of [
       "requiresResearch",
@@ -64,7 +64,7 @@ export default function ScholarshipForm({
       "sportsRequired",
       "disabilityPreferred",
     ]) {
-      payload[k] = fd.get(k) ? "true" : "";
+      payload[k] = fd.has(k);
     }
 
     const result = scholarship
@@ -96,7 +96,7 @@ export default function ScholarshipForm({
         <div className="hairline mb-8 flex items-center gap-3 px-4 py-3">
           <span className="h-2 w-2 shrink-0 bg-primary" aria-hidden />
           <span className="mono-label text-muted">
-            Demo mode — edits are not persisted. Connect a database to save.
+            Demo workspace — profile changes are shared and may reset online.
           </span>
         </div>
       )}

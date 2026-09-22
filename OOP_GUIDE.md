@@ -1,110 +1,71 @@
-# Scholarship Management and Financial Aid System — Java OOP
+# Java OOP guide
 
-The financial aid backend is implemented in Java 17-compatible source under `backend/src/main/java/com/scholarai/aid`. It is called by the running website. TypeScript is used for the retained Next.js UI and server-to-server adapter; it no longer implements the financial aid class hierarchy or business rules.
+The browser renders the existing frontend. Its server actions call Java; they do not calculate scholarship scores or make application decisions. The Java project uses the JDK HTTP server, Jackson for JSON, H2 and JDBC. There is no Spring configuration, dependency-injection framework or remote database to learn for the demo.
 
-## Four pillars in Java
+## Four OOP concepts in the running project
 
-| OOP concept | Java implementation | What to demonstrate |
+| Concept | Actual class or interface | What it does |
 | --- | --- | --- |
-| Encapsulation | `AidApplication` owns a private `AidRecord`; `AidProgram` has private final metadata fields | Status can change only through the validated `transition()` method. Returned records and history lists are immutable. |
-| Abstraction | Abstract class `AidProgram`; interface `AidRepository` | The service works with contracts, without knowing each eligibility rule or the SQL implementation. |
-| Inheritance | `NeedBasedGrant`, `EmergencyAid`, and `EducationSupport` extend `AidProgram` | Every subclass inherits the common `assess()` algorithm and award cap. |
-| Polymorphism | `FinancialAidService.assess()` calls `p.assess(need)` for a `List<AidProgram>` | Java dispatches each program's overridden `exclusion()` method at runtime. |
-| Composition | `FinancialAidService` receives an `AidRepository` and a list of programs | Independent objects cooperate to implement the application workflow. |
-| Interface implementation | `JdbcAidRepository implements AidRepository` | Storage can be replaced without changing service or HTTP controller code. |
-| Method overriding | `@Override protected String exclusion(FinancialNeed need)` | Grant, emergency, and education-support eligibility use different rules. |
-| Immutability | Java records `FinancialNeed`, `AidRecord`, `Principal`; defensive `List.copyOf` | Application snapshots cannot be altered by UI or service callers. |
-| Exception handling | `AidException` carries an expected business failure and HTTP status | Invalid transitions return a useful error rather than changing the stored record. |
+| Encapsulation | `aid/domain/AidApplication` | Private state changes only through permitted lifecycle methods; an approved amount and status cannot be changed arbitrarily. |
+| Abstraction | `storage/PlatformRepository`, `aid/repository/AidRepository` | Services ask repositories to load or update records without knowing the connection or SQL details. |
+| Inheritance | `NeedBasedGrant`, `EmergencyAid`, `EducationSupport` extend `AidProgram` | Each aid program inherits common identity and assessment behaviour and supplies its own eligibility rules. |
+| Polymorphism | `FinancialAidService` works with `AidProgram` references | The same assessment call runs the concrete program's rules, chosen by the actual object. |
 
-## Class diagram
+Composition is also used throughout: `ApplicationService` contains a repository, `ScoreService` and `MatchingService`. It coordinates them instead of duplicating their work.
 
-```mermaid
-classDiagram
-    class FinancialNeed {
-      <<record>>
-      +annualIncome
-      +tuition
-      +livingCosts
-      +existingSupport
-      +contribution
-      +emergency
-      +fundingGap() long
-    }
-    class AidProgram {
-      <<abstract>>
-      -String id
-      -String name
-      -long maximum
-      #exclusion(FinancialNeed)* String
-      +assess(FinancialNeed) Assessment
-      +details() ProgramDetails
-    }
-    AidProgram <|-- NeedBasedGrant
-    AidProgram <|-- EmergencyAid
-    AidProgram <|-- EducationSupport
-    AidProgram ..> FinancialNeed
-    class AidApplication {
-      -AidRecord record
-      +submit(...) AidApplication
-      +transition(...) AidRecord
-      +snapshot() AidRecord
-    }
-    class AidRepository {
-      <<interface>>
-      +list(studentId)
-      +find(id)
-      +create(record)
-      +update(next, expectedVersion)
-    }
-    AidRepository <|.. JdbcAidRepository
-    FinancialAidService --> AidRepository
-    FinancialAidService o-- AidProgram
-    FinancialAidService ..> AidApplication
-    AidHttpServer --> FinancialAidService
-    AidHttpServer --> SignedRequestAuthenticator
+## Reading order
+
+1. **`Main.java`** creates the repositories, services and HTTP server.
+2. **`http/PlatformApi.java`** selects a module for a signed request. The existing financial-aid routes stay in `aid/http/AidHttpServer.java`.
+3. **`student/StudentProfile.java`** and **`scholarship/Scholarship.java`** define immutable data records. A Java record supplies accessors, equality and a constructor without pages of getter/setter boilerplate.
+4. **`scoring/ScoreService.java`** calculates the ten published score components.
+5. **`scholarship/MatchingService.java`** applies eligibility gates, computes matches and sorts them.
+6. **`application/ApplicationService.java`** submits, withdraws and saves scholarships. Submission freezes the score and reasons so a later profile edit cannot rewrite the decision evidence.
+7. **`aid/domain/AidProgram.java`** and its three subclasses demonstrate inheritance and polymorphism.
+8. **`storage/JdbcPlatformRepository.java`** shows the JDBC transaction around each platform update.
+
+## Example: applying for a scholarship
+
+```text
+Apply button
+  → Next.js applyAction (uses the signed-in identity)
+  → signed request to PlatformApi
+  → ApplicationService.submit
+      checks student role, deadline and duplicate application
+      loads the student's stored profile
+      calls ScoreService and MatchingService
+      stores the frozen score, reasons and submitted application
+      records an audit entry
+  → the existing page refreshes
 ```
 
-## Running request flow
+## Example: financial aid
 
-`React form → Next.js server action → signed HTTP request → Java AidHttpServer → FinancialAidService → domain objects → JdbcAidRepository → H2 file database`
-
-- The existing Supabase session supplies identity in live mode. Demo mode uses the original Aarya persona.
-- Next.js signs the identity, HTTP method, path, timestamp, nonce, and body digest with an HMAC secret that never reaches the browser.
-- Java rejects unsigned, expired, tampered, and replayed requests.
-- Java owns all program metadata, financial-gap calculations, eligibility, submission rules, state transitions, and aid persistence.
-- Only admins may review live aid applications. Demo review is explicitly enabled for classroom use and limited to the demo identity's own records.
-- Whole-rupee amounts use Java `long`. Fractional, missing, negative, and excessive financial input is rejected.
-- SQL uses prepared statements. A student/program unique constraint prevents duplicate applications. Version-checked updates prevent concurrent review overwrites.
-
-## State machine
-
-```mermaid
-stateDiagram-v2
-    [*] --> submitted
-    submitted --> under_review
-    submitted --> withdrawn
-    under_review --> approved
-    under_review --> rejected
-    under_review --> withdrawn
-    approved --> disbursed
+```text
+FinancialNeed
+  → FinancialAidService
+  → AidProgram.assess
+      NeedBasedGrant / EmergencyAid / EducationSupport
+  → AidApplication
+  → AidRepository → JdbcAidRepository
 ```
 
-The application cannot skip review, approve more than requested, withdraw after approval, or record a payment twice. Each successful transition appends an immutable history entry.
+The three concrete programs run through the same abstract type. No UI code needs to know which subclass supplies a rule.
 
-## Viva demonstration
+## Simple storage design
 
-1. Install JDK 17+ (JDK 21 LTS recommended), Maven, and Node.js 22+. Run `npm ci` then `npm run dev`.
-2. Open the original landing page at `/`, then the student dashboard and Financial Aid from the sidebar.
-3. Show the declaration: annual income ₹3,00,000, tuition ₹1,20,000, living costs ₹60,000, confirmed support ₹30,000, contribution ₹20,000.
-4. Java returns a funding gap of ₹1,30,000. The grant estimate is capped at ₹1,00,000.
-5. Toggle the emergency checkbox to demonstrate subclass-specific eligibility.
-6. Submit an application. Open Demo review desk; start review, approve ₹75,000, and record a simulated disbursement reference.
-7. Expand Funding declaration & activity. Restart both services and show the record still exists.
-8. Open `AidProgram.java` and its subclasses to explain abstraction, inheritance, and polymorphism. Open `AidApplication.java` to explain encapsulation.
-9. Run `npm run test:java` for the Java unit, repository, service, and HTTP tests.
+`PlatformRepository` exposes `read()` and `update(operation)`. The JDBC implementation loads a small JSON dataset from H2, runs a service operation within a transaction, and commits the resulting dataset. A failure rolls back the entire operation. Row locking prevents two simultaneous submissions from passing the duplicate check.
 
-## Honest scope
+This is intentionally for a small college demo. The flexible JSON records keep institution and admin screens compatible with the existing frontend without introducing many mapper classes. Scoring uses typed immutable Java records. A larger deployment would split the platform dataset into relational tables behind the same repository interface.
 
-The original scholarship matching engine, authentication, document/AI integrations, and frontend remain in their existing Next.js/TypeScript implementation to preserve ScholarAI features. The new financial aid backend and OOP demonstration are Java. This is not a claim that every original ScholarAI backend feature was rewritten in Java.
+The financial-aid repository already uses dedicated SQL records and optimistic version checks; that tested implementation is retained.
 
-Programs are illustrative classroom schemes. Aid documents require human verification; the pre-existing document module is retained but does not automatically approve aid. Disbursement records do not transfer money. Reviewers must reconcile other awards before deciding new support; separate program estimates are not a combined guaranteed award. This version supports one application per student per program, including terminal/rejected/withdrawn records.
+## Tests worth showing in a viva
+
+- `EngineParityTest`: compares Java results with snapshots captured from the original frontend for all 61 seeded profiles and 12 scholarships.
+- `EngineRulesTest`: checks score bounds, increasing CGPA, increasing income, demographic neutrality, fraud and roadmaps.
+- `PlatformWorkflowTest`: tests validation, ownership, persistence after reopening the repository, duplicate submission, frozen scores, decisions and notifications.
+- `DocumentTest`: checks Indian income formats, CGPA conversion, identity matching and unreadable documents.
+- Existing aid domain/service/HTTP tests cover grant rules, lifecycle transitions, persistence, replay protection and signed requests.
+
+These explanations belong in repository documentation only. The website contains no added project-structure panels.

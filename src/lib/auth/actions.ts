@@ -7,11 +7,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getSupabaseServer, getSupabaseAdmin } from "@/lib/supabase/server";
-import { isLiveMode, hasDatabase } from "@/lib/env";
-import { db, schema } from "@/lib/db/client";
+import { isLiveMode } from "@/lib/env";
+import { javaHttpRequest } from "@/lib/java/http";
+import { getSessionProfile } from "./session";
 import { checkRateLimit, formatRetryAfter } from "@/lib/rate-limit";
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
@@ -101,43 +101,13 @@ export async function signUpAction(input: unknown): Promise<AuthResult> {
     userId = signUp.user.id;
   }
 
-  // Profile rows are created with the service role: at this point the
-  // client may not yet have a confirmed session, and RLS would block it.
-  if (hasDatabase()) {
-    try {
-      await db()
-        .insert(schema.profiles)
-        .values({
-          id: userId,
-          role: data.role,
-          name: data.name,
-          email: data.email,
-          avatarHue: Math.abs(hash(data.email)) % 360,
-        })
-        .onConflictDoNothing();
-
-      if (data.role === "student") {
-        await db()
-          .insert(schema.studentProfiles)
-          .values({
-            profileId: userId,
-            cgpa: data.cgpa ?? 0,
-            year: data.year ?? new Date().getFullYear() + 1,
-            field: data.field ?? "",
-            profileCompletion: computeInitialCompletion(data),
-          })
-          .onConflictDoNothing();
-      } else {
-        await db()
-          .insert(schema.institutions)
-          .values({ profileId: userId, orgName: data.name })
-          .onConflictDoNothing();
-      }
-    } catch (e) {
-      console.error("profile row creation failed:", e);
-      return { ok: false, error: "Account created but profile setup failed — contact support" };
-    }
-  }
+  const registered = await javaHttpRequest<{ ok: true }>({
+    id: userId, role: "student", name: data.name, email: data.email, avatarHue: 258,
+  }, "/api/platform/register", "POST", {
+    role: data.role, name: data.name, email: data.email, cgpa: data.cgpa,
+    year: data.year, field: data.field, achievementsText: data.achievementsText,
+  });
+  if (!registered.ok) return registered;
   return { ok: true };
 }
 
@@ -171,23 +141,15 @@ export async function signInAction(input: unknown): Promise<SignInResult> {
   const supabase = await getSupabaseServer();
   if (!supabase) return { ok: false, error: "Auth service unavailable" };
 
-  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { ok: false, error: error.message };
 
-  // Role decides the landing dashboard.
-  let role = "student";
-  if (hasDatabase()) {
-    const rows = await db()
-      .select({ role: schema.profiles.role, disabled: schema.profiles.disabled })
-      .from(schema.profiles)
-      .where(eqId(data.user.id))
-      .limit(1);
-    if (rows[0]?.disabled) {
-      await supabase.auth.signOut();
-      return { ok: false, error: "This account has been disabled" };
-    }
-    role = rows[0]?.role ?? "student";
+  const profile = await getSessionProfile();
+  if (!profile) {
+    await supabase.auth.signOut();
+    return { ok: false, error: "This account is disabled or its profile is unavailable" };
   }
+  const role = profile.role;
   const redirectTo =
     role === "admin"
       ? "/dashboard/admin"
@@ -226,25 +188,4 @@ export async function resetPasswordAction(email: string): Promise<AuthResult> {
   const { error } = await supabase.auth.resetPasswordForEmail(check.data);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
-}
-
-// ── helpers ─────────────────────────────────────────────────
-
-function eqId(id: string) {
-  return eq(schema.profiles.id, id);
-}
-
-function hash(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return h;
-}
-
-function computeInitialCompletion(d: z.infer<typeof signUpSchema>): number {
-  let filled = 2; // name + email
-  if (d.cgpa) filled++;
-  if (d.year) filled++;
-  if (d.field) filled++;
-  if (d.achievementsText) filled++;
-  return Math.round((filled / 10) * 100);
 }

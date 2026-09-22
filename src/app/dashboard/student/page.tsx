@@ -1,3 +1,4 @@
+import { computeAIScore, rankScholarships, generateRoadmap } from "@/lib/ai-engine";
 import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { getDataSource } from "@/lib/datasource";
@@ -19,8 +20,17 @@ export default async function StudentDashboardPage() {
   // needs inputs before any score is meaningful.
   if (!student) return <EmptyProfileNotice name={me.name} />;
 
+  const [ai, ranked, roadmapItems] = await Promise.all([
+    computeAIScore(student),
+    rankScholarships(student, scholarships),
+    generateRoadmap(student),
+  ]);
+
   return (
     <StudentDashboardView
+      ai={ai}
+      ranked={ranked}
+      roadmapItems={roadmapItems}
       student={student}
       scholarships={scholarships}
       applications={applications}

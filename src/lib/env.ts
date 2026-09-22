@@ -8,10 +8,6 @@ export function isLiveMode(): boolean {
   );
 }
 
-export function hasDatabase(): boolean {
-  return Boolean(process.env.DATABASE_URL);
-}
-
 export function hasAnthropic(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }

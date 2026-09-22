@@ -11,13 +11,11 @@ import "server-only";
 // ─────────────────────────────────────────────────────────────
 
 import { revalidatePath } from "next/cache";
-import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { db, schema } from "@/lib/db/client";
-import { hasDatabase } from "@/lib/env";
+import { javaRequest, javaAction } from "@/lib/java/client";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth/session";
-import { verifyDocument, type DocumentKind, type VerificationStatus } from "./verify";
+import { extractDocumentText, type DocumentKind, type VerificationStatus } from "./verify";
 
 export const DOCUMENTS_BUCKET = "documents";
 
@@ -37,7 +35,7 @@ const EXTENSION_BY_MIME: Record<string, string> = {
 
 /** Shown in demo mode and whenever storage is not configured. */
 export const STORAGE_UNAVAILABLE =
-  "Connect storage to upload — file uploads need a Supabase project (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) and DATABASE_URL.";
+  "Connect storage to upload — file uploads need a Supabase project (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) and the Java backend.";
 
 export const documentKindSchema = z.enum([
   "resume",
@@ -79,23 +77,9 @@ export type DocumentActionResult =
   | { ok: true; document: DocumentRecord }
   | { ok: false; error: string };
 
-type DocumentRow = typeof schema.documents.$inferSelect;
-
-export function rowToDocument(row: DocumentRow): DocumentRecord {
-  return {
-    id: row.id,
-    kind: row.kind,
-    storagePath: row.storagePath,
-    verificationStatus: row.verificationStatus,
-    flags: row.flags,
-    extractedFields: (row.extractedFields as Record<string, unknown> | null) ?? null,
-    createdAt: row.createdAt.toISOString(),
-  };
-}
-
 /** True when both a storage backend and a database are configured. */
 export async function canUpload(): Promise<boolean> {
-  return Boolean(getSupabaseAdmin()) && hasDatabase();
+  return Boolean(getSupabaseAdmin());
 }
 
 /**
@@ -185,115 +169,36 @@ export async function storeAndVerifyDocument(args: {
   );
   if (!put.ok) return put;
 
-  const inserted = await db()
-    .insert(schema.documents)
-    .values({
-      studentId: args.userId,
-      applicationId: args.applicationId ?? null,
-      storagePath: put.storagePath,
-      kind: args.kind,
-      verificationStatus: "pending",
-    })
-    .returning();
-
-  const row = inserted[0];
-  if (!row) return { ok: false, error: "Could not record the uploaded document" };
-
-  // Compare against the student's real row — the profile is the claim
-  // being checked, so it is read from the DB, never from the request.
-  const profileRows = await db()
-    .select({
-      familyIncome: schema.studentProfiles.familyIncome,
-      cgpa: schema.studentProfiles.cgpa,
-    })
-    .from(schema.studentProfiles)
-    .where(eq(schema.studentProfiles.profileId, args.userId))
-    .limit(1);
-  const profile = profileRows[0] ?? null;
-
-  const outcome = await verifyDocument({
-    kind: args.kind,
-    mimeType: args.mimeType,
-    bytes: args.bytes,
-    studentName: args.studentName,
-    declaredIncome: profile?.familyIncome ?? null,
-    declaredCgpa: profile?.cgpa ?? null,
+  const text = await extractDocumentText(args.bytes, args.mimeType);
+  const result = await javaAction<DocumentRecord>("document-save", {
+    kind: args.kind, applicationId: args.applicationId ?? null, storagePath: put.storagePath,
+    mimeType: args.mimeType, byteSize: args.bytes.byteLength, text,
   });
-
-  const updated = await db()
-    .update(schema.documents)
-    .set({
-      verificationStatus: outcome.status,
-      flags: outcome.flags,
-      extractedFields: outcome.extractedFields,
-    })
-    .where(eq(schema.documents.id, row.id))
-    .returning();
-
+  if ("ok" in result && !result.ok) {
+    await getSupabaseAdmin()?.storage.from(DOCUMENTS_BUCKET).remove([put.storagePath]);
+    return result;
+  }
   revalidatePath("/dashboard/student/documents");
-  return {
-    ok: true,
-    document: rowToDocument(updated[0] ?? row),
-    text: outcome.text,
-  };
+  return { ok: true, document: result as DocumentRecord, text };
 }
 
 /** Documents owned by the caller. Never call with an id from the client. */
 export async function listMyDocuments(): Promise<DocumentRecord[]> {
   const me = await getSessionProfile();
-  if (!me || !hasDatabase()) return [];
-
-  const rows = await db()
-    .select()
-    .from(schema.documents)
-    .where(eq(schema.documents.studentId, me.id))
-    .orderBy(desc(schema.documents.createdAt));
-
-  return rows.map(rowToDocument);
+  if (!me) return [];
+  return javaRequest<DocumentRecord[]>("documents", { id: me.id });
 }
 
-/**
- * Deletes the storage object and the row. The `where` clause is scoped
- * by `ownerId` (which callers must take from the session), so a guessed
- * document id belonging to someone else matches nothing.
- */
-export async function deleteOwnDocument(
-  ownerId: string,
-  documentId: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const parsed = z.uuid().safeParse(documentId);
-  if (!parsed.success) return { ok: false, error: "Invalid document id" };
-
-  if (!hasDatabase()) return { ok: false, error: STORAGE_UNAVAILABLE };
-
-  const rows = await db()
-    .select()
-    .from(schema.documents)
-    .where(
-      and(
-        eq(schema.documents.id, parsed.data),
-        eq(schema.documents.studentId, ownerId)
-      )
-    )
-    .limit(1);
-
-  const row = rows[0];
+export async function deleteOwnDocument(ownerId: string, documentId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const me = await getSessionProfile();
+  if (!me || me.id !== ownerId) return { ok: false, error: "Sign in to manage your documents" };
+  const row = (await listMyDocuments()).find(item => item.id === documentId);
   if (!row) return { ok: false, error: "Document not found" };
-
   const admin = getSupabaseAdmin();
-  if (admin) {
-    // Storage first: a failed delete here must not leave an orphaned file
-    // that no row points at any more.
-    const { error } = await admin.storage
-      .from(DOCUMENTS_BUCKET)
-      .remove([row.storagePath]);
-    if (error) {
-      return { ok: false, error: `Could not remove the stored file: ${error.message}` };
-    }
-  }
-
-  await db().delete(schema.documents).where(eq(schema.documents.id, row.id));
-
-  revalidatePath("/dashboard/student/documents");
-  return { ok: true };
+  if (!admin) return { ok: false, error: STORAGE_UNAVAILABLE };
+  const { error } = await admin.storage.from(DOCUMENTS_BUCKET).remove([row.storagePath]);
+  if (error) return { ok: false, error: "Could not remove the stored file" };
+  const result = await javaAction<{ ok: true }>("document-delete", { id: documentId });
+  if (result.ok) revalidatePath("/dashboard/student/documents");
+  return result;
 }

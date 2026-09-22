@@ -21,7 +21,7 @@ import {
   YAxis,
 } from "recharts";
 import { Badge, GlassCard, ProgressBar, StatPill } from "@/components/ui/primitives";
-import { WEIGHTS } from "@/lib/ai-engine";
+import { WEIGHTS } from "@/lib/engine-contracts";
 import type { AuditEntry, PlatformStats } from "@/lib/admin/actions";
 
 const chartTooltipStyle = {
@@ -205,7 +205,7 @@ export default function AdminDashboardView({
           <p className="mt-4 text-xs leading-relaxed text-muted">
             Published weights sum to {WEIGHT_SUM}% — read directly from{" "}
             <span className="font-[family-name:var(--font-spline-mono)]">
-              src/lib/ai-engine.ts
+              scoring/ScoreService.java
             </span>
             , the same array that scores every profile.
           </p>

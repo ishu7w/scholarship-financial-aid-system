@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   revalidate: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({ getSessionProfile: mocks.session }));
-vi.mock("../java-client", () => ({ javaAidRequest: mocks.java }));
+vi.mock("@/lib/java/http", () => ({ javaHttpRequest: mocks.java }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 import { changeAid, submitAid, assessAid } from "../actions";
 const need = {

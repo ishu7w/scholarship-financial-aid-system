@@ -18,7 +18,7 @@ jobs:
 
     # No secrets are configured for this job, and that is deliberate: the
     # app must build and run in demo mode with zero env vars. If a change
-    # makes Supabase or DATABASE_URL mandatory, this job is where it fails.
+    # makes a hosted service mandatory, this job is where it fails.
     steps:
       - uses: actions/checkout@v4
 
@@ -50,3 +50,27 @@ jobs:
 
       - name: Build
         run: npx next build
+
+      - name: Verify Java and frontend together
+        shell: bash
+        run: |
+          npm start > "$RUNNER_TEMP/scholarai-server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in {1..60}; do
+            if curl --silent --fail http://localhost:3000/login > /dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat "$RUNNER_TEMP/scholarai-server.log"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat "$RUNNER_TEMP/scholarai-server.log"
+            exit 1
+          fi
+          npm run test:smoke || { cat "$RUNNER_TEMP/scholarai-server.log"; exit 1; }

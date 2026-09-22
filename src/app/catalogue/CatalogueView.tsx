@@ -4,7 +4,7 @@ import "../editions.css";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Scholarship } from "@/lib/types";
-import { WEIGHTS } from "@/lib/ai-engine";
+import { WEIGHTS } from "@/lib/engine-contracts";
 import { cn, formatCurrency } from "@/lib/utils";
 
 // The four featured "editions" with their headline treatments

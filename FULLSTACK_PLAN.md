@@ -1,3 +1,5 @@
+> Historical design notes from before the Java rebuild. Use [README.md](README.md) and [OOP_GUIDE.md](OOP_GUIDE.md) for the current project.
+
 # ScholarAI — Full-Stack Production Plan
 
 Goal: convert the current demo (all data from `src/lib/data.ts`, fake auth, deterministic `src/lib/ai-engine.ts`) into a fully functional, deployable product with a real database, real auth, real-time updates, and every feature actually working — while keeping the Editions paper UI and the explainable scoring engine exactly as they are.

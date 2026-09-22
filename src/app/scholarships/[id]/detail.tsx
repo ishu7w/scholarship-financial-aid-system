@@ -20,31 +20,29 @@ import DashboardShell from "@/components/layout/DashboardShell";
 import ChatAssistant from "@/components/chat/ChatAssistant";
 import ScoreRing from "@/components/ui/ScoreRing";
 import { Badge, GlassCard, ProgressBar } from "@/components/ui/primitives";
-import { computeAIScore, matchScholarship } from "@/lib/ai-engine";
 import { applyAction, withdrawAction } from "@/lib/applications/actions";
 import type { ApplicationRecord } from "@/lib/datasource";
-import type { Scholarship, StudentProfile } from "@/lib/types";
+import type { AIScore, MatchResult, Scholarship } from "@/lib/types";
 import { daysUntil, formatCurrency, formatDate } from "@/lib/utils";
 
 export default function ScholarshipDetail({
   scholarship,
-  student,
   application,
   canApply,
+  ai,
+  match,
 }: {
   scholarship: Scholarship;
-  /** null when signed out or profile incomplete. */
-  student: StudentProfile | null;
   application: ApplicationRecord | null;
   canApply: boolean;
+  ai: AIScore | null;
+  match: MatchResult | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   // No profile → no invented numbers. Show the program, not a fake score.
-  const match = student ? matchScholarship(student, scholarship) : null;
-  const ai = student ? computeAIScore(student) : null;
   const applied = Boolean(application && application.status !== "draft");
 
   const onApply = () => {
