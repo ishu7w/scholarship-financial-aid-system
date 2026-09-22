@@ -1,9 +1,8 @@
 import "server-only";
 import { cache } from "react";
-import { eq } from "drizzle-orm";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { isLiveMode, hasDatabase } from "@/lib/env";
-import { db, schema } from "@/lib/db/client";
+import { isLiveMode } from "@/lib/env";
+import { javaHttpRequest } from "@/lib/java/http";
 
 export interface SessionProfile {
   id: string;
@@ -32,23 +31,11 @@ export const getSessionProfile = cache(async (): Promise<SessionProfile | null> 
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
 
-  if (hasDatabase()) {
-    const rows = await db()
-      .select()
-      .from(schema.profiles)
-      .where(eq(schema.profiles.id, data.user.id))
-      .limit(1);
-    const p = rows[0];
-    if (p && !p.disabled) {
-      return { id: p.id, role: p.role, name: p.name, email: p.email, avatarHue: p.avatarHue };
-    }
-    return null;
-  }
-  return {
-    id: data.user.id,
-    role: "student",
-    name: data.user.email ?? "User",
-    email: data.user.email ?? "",
-    avatarHue: 258,
+  const identity: SessionProfile = {
+    id: data.user.id, role: "student", name: data.user.email ?? "User",
+    email: data.user.email ?? "", avatarHue: 258,
   };
+  const result = await javaHttpRequest<SessionProfile & { disabled: boolean } | null>(identity, "/api/platform/account", "POST", {});
+  if (!result.ok || !result.data || result.data.disabled) return null;
+  return { ...result.data, avatarHue: result.data.avatarHue ?? 258 };
 });

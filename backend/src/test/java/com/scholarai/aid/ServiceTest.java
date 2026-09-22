@@ -1,5 +1,7 @@
 package com.scholarai.aid;
 
+import com.scholarai.Main;
+
 import com.scholarai.aid.domain.*;
 import com.scholarai.aid.repository.JdbcAidRepository;
 import com.scholarai.aid.service.FinancialAidService;

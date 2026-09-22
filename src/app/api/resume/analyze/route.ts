@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    analysis: analyzeResume(parsed.data.text),
+    analysis: await analyzeResume(parsed.data.text),
     source: "text",
     document: null,
   });
@@ -143,7 +143,7 @@ async function handleFile(
   }
 
   return NextResponse.json({
-    analysis: analyzeResume(text),
+    analysis: await analyzeResume(text),
     source: "file",
     text,
     document: stored.document,

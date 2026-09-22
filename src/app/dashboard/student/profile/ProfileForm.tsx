@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Check, Loader2 } from "lucide-react";
 import type { StudentProfile } from "@/lib/types";
 import { saveProfileAction } from "@/lib/profile/actions";
-import { WEIGHTS } from "@/lib/ai-engine";
+import { WEIGHTS } from "@/lib/engine-contracts";
 
 // Which published weight each field feeds — shown inline so the
 // explainability claim holds on the editing surface too.
@@ -54,10 +54,10 @@ export default function ProfileForm({
     setError(null);
     setSaved(false);
     const fd = new FormData(e.currentTarget);
-    const payload = Object.fromEntries(fd.entries());
+    const payload: Record<string, FormDataEntryValue | boolean> = Object.fromEntries(fd.entries());
     // Unchecked checkboxes are absent from FormData.
     for (const k of ["minority", "disability", "firstGeneration"]) {
-      payload[k] = fd.get(k) ? "true" : "";
+      payload[k] = fd.has(k);
     }
     const result = await saveProfileAction(payload);
     if (result.ok) {
@@ -81,7 +81,7 @@ export default function ProfileForm({
         <div className="hairline mb-8 flex items-center gap-3 px-4 py-3">
           <span className="h-2 w-2 shrink-0 bg-primary" aria-hidden />
           <span className="mono-label text-muted">
-            Demo mode — edits are not persisted. Connect a database to save.
+            Demo workspace — profile changes are shared and may reset online.
           </span>
         </div>
       )}

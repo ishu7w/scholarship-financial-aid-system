@@ -1,3 +1,5 @@
+> Historical design notes from before the Java rebuild. Use [README.md](README.md) and [OOP_GUIDE.md](OOP_GUIDE.md) for the current project.
+
 # Master execution prompt
 
 Paste the block below into Claude Code (run from `scholarai/`). Run one phase per session for best results: replace the last line with "Execute Phase N now."

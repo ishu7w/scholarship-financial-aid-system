@@ -1,3 +1,4 @@
+import { computeAIScore, matchScholarship } from "@/lib/ai-engine";
 import { notFound } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/session";
 import { getDataSource } from "@/lib/datasource";
@@ -19,8 +20,9 @@ export default async function ScholarshipPage({
 
   return (
     <ScholarshipDetail
+      ai={student ? await computeAIScore(student) : null}
+      match={student ? await matchScholarship(student, scholarship) : null}
       scholarship={scholarship}
-      student={student}
       application={application}
       canApply={me?.role === "student"}
     />

@@ -8,7 +8,7 @@ import {
   type AidRecord,
   type AssessmentResult,
 } from "./contracts";
-import { javaAidRequest } from "./java-client";
+import { javaHttpRequest } from "@/lib/java/http";
 
 export async function assessAid(input: unknown) {
   const me = await getSessionProfile();
@@ -17,7 +17,7 @@ export async function assessAid(input: unknown) {
   const parsed = needSchema.safeParse(input);
   if (!parsed.success)
     return { ok: false as const, error: parsed.error.issues[0].message };
-  return javaAidRequest<AssessmentResult>(
+  return javaHttpRequest<AssessmentResult>(
     me,
     "/api/aid/assess",
     "POST",
@@ -31,7 +31,7 @@ export async function submitAid(input: unknown) {
   const parsed = applicationSchema.safeParse(input);
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0].message };
-  const result = await javaAidRequest<AidRecord>(
+  const result = await javaHttpRequest<AidRecord>(
     me,
     "/api/aid/applications",
     "POST",
@@ -60,7 +60,7 @@ export async function changeAid(input: unknown) {
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0].message };
   const { id, ...decision } = parsed.data;
-  const result = await javaAidRequest<AidRecord>(
+  const result = await javaHttpRequest<AidRecord>(
     me,
     `/api/aid/applications/${id}/transition`,
     "POST",

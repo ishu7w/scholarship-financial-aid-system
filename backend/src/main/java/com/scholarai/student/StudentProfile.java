@@ -1,0 +1,33 @@
+package com.scholarai.student;
+
+/** Immutable academic profile; changes create a new validated record. */
+public record StudentProfile(
+    String id,
+    String name,
+    String email,
+    double avatarHue,
+    String field,
+    String degree,
+    double year,
+    String location,
+    double cgpa,
+    double attendance,
+    double familyIncome,
+    String gender,
+    boolean minority,
+    boolean disability,
+    boolean firstGeneration,
+    double achievements,
+    double researchPapers,
+    double hackathons,
+    double sportsLevel,
+    double certifications,
+    double leadershipRoles,
+    double volunteerHours,
+    double projects,
+    java.util.List<String> skills,
+    double previousScholarships,
+    double behaviourScore,
+    double sopQuality,
+    double recommendationStrength,
+    double profileCompletion) {}

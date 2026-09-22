@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Filter, Search, Users } from "lucide-react";
 import DashboardShell from "@/components/layout/DashboardShell";
 import ChatAssistant from "@/components/chat/ChatAssistant";
 import { Badge, GlassCard, ProgressBar } from "@/components/ui/primitives";
-import { rankScholarships } from "@/lib/ai-engine";
 import { cn, daysUntil, formatCurrency } from "@/lib/utils";
-import type { Scholarship, ScholarshipCategory, StudentProfile } from "@/lib/types";
+import type { MatchResult, ScholarshipCategory } from "@/lib/types";
 
 const FILTERS: ("All" | ScholarshipCategory)[] = [
   "All", "Government", "Merit", "Need-based", "Women", "Minority",
@@ -17,36 +16,16 @@ const FILTERS: ("All" | ScholarshipCategory)[] = [
 ];
 
 export default function ExplorerView({
-  student,
-  scholarships,
+  ranked,
   appliedIds,
 }: {
-  /** null when signed out or profile incomplete — ranking is skipped. */
-  student: StudentProfile | null;
-  scholarships: Scholarship[];
+  /** Java-ranked matches, or the unranked public catalogue when signed out. */
+  ranked: MatchResult[];
   appliedIds: string[];
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
   const [eligibleOnly, setEligibleOnly] = useState(false);
-
-  const ranked = useMemo(
-    () =>
-      student
-        ? rankScholarships(student, scholarships)
-        : // No profile: show the catalogue unranked rather than inventing scores.
-          scholarships.map((s) => ({
-            scholarship: s,
-            eligible: true,
-            matchScore: 0,
-            winProbability: 0,
-            missingCriteria: [],
-            reasons: [],
-            improvements: [],
-            fairnessNote: "",
-          })),
-    [student, scholarships]
-  );
 
   const results = ranked.filter((r) => {
     if (filter !== "All" && r.scholarship.category !== filter) return false;

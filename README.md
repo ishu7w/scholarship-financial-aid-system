@@ -1,130 +1,71 @@
-> **Java OOPS extension:** Financial aid now runs in a real Java backend with JDBC persistence. Start with [Java setup](FINANCIAL_AID_SETUP.md), [Java OOP guide](OOP_GUIDE.md), and [UI reference](.superdesign/UI_REFERENCE.md). The original ScholarAI documentation below applies to its retained scholarship features.
+# Scholarship Management and Financial Aid System
 
-# ScholarAI — Explainable Scholarship Matching
+A Java OOP college project with the existing ScholarAI web interface. The layouts, colours, components and animations remain in the Next.js frontend. Java owns the scholarship rules, scoring, student profiles, applications, institution decisions, financial aid, document verification, notifications and administration.
 
-ScholarAI matches students to scholarships with a scoring model you can read. Every number the UI shows — a profile score, a match percentage, a rejection reason — traces back to a published weight in `src/lib/ai-engine.ts`, so a student can see exactly why they placed where they did and an institution gets a ranking it can defend.
+## Run the project
 
-Three roles share one platform:
-
-- **Students** complete an academic profile, browse a ranked catalogue with per-program eligibility explanations, upload supporting documents for automated verification, apply, and get notified when a decision lands.
-- **Institutions** publish scholarship programs with machine-enforced eligibility criteria, work an AI-ranked applicant queue with fraud signals, and approve or reject with the engine's own reasons attached.
-- **Admins** see platform aggregates, the live scoring-weight registry, a filterable audit log, and user role/disable controls.
-
-## Two modes
-
-The app runs in one of two modes, chosen at runtime by which environment variables are present. There is no build flag and no code change between them.
-
-| | Demo mode | Live mode |
-|---|---|---|
-| **Trigger** | no env vars set | `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` set (auth), `DATABASE_URL` set (data) |
-| **Data** | deterministic seed data from `src/lib/data.ts`, in module memory | Postgres via Drizzle |
-| **Auth** | a single seeded student persona is signed in automatically; any credentials "succeed" | real Supabase Auth, three roles, RLS-enforced |
-| **Writes** | applications persist in memory for the session; institution/admin writes no-op | persisted, audit-logged |
-| **Uploads** | unavailable (no storage backend) | private Supabase Storage bucket + verification pipeline |
-| **Realtime** | no socket; the notification bell polls | Postgres CDC on `notifications` and `applications` |
-
-The switch lives in `src/lib/env.ts` (`isLiveMode()`, `hasDatabase()`) and is honoured by `getDataSource()` in `src/lib/datasource/index.ts`, which returns either `DemoDataSource` or `LiveDataSource` behind one interface. Delete or comment out your `.env.local` and you are back in demo mode.
-
-Demo mode exists so the product can be judged or demonstrated on any machine with zero setup, keys, or network. It is not a security posture — see `SECURITY.md`.
-
-### Quickstart — demo mode
+Install **JDK 17 or newer**, **Maven**, and **Node.js 22**. Then:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. No env file, no database, no API keys.
+Open **http://localhost:3000**. The command builds and starts Java on port 8080, waits for it to become ready, and starts the frontend. It creates a private signing key in the ignored `.env.local` file automatically. No hosted database is needed for the classroom demo.
 
-You are signed in as the seeded student persona "Aarya Sharma" (`src/lib/auth/session.ts`). Because that persona's role is `student`, the role guard confines demo mode to the student surface: the student dashboard, profile, documents, scholarship explorer, catalogue and resume analyzer. `/dashboard/institution` and `/dashboard/admin` redirect back to the student dashboard, and the sidebar hides them. Seeing those two dashboards requires live mode and the corresponding demo account.
+The original demo persona is Aarya Sharma. Demo login and registration keep their existing simulated behaviour. The existing role guards and read-only institution/admin demo controls are retained. For authenticated accounts, Supabase still handles passwords and cookies; Java stores profiles and roles.
 
-### Quickstart — live mode
+## Module structure
 
-```bash
-npm install
-cp .env.example .env.local     # then fill in your Supabase values
-npm run db:generate            # only if you changed src/lib/db/schema.ts
-npm run db:migrate             # apply drizzle/ migrations
-psql "$DATABASE_URL" -f supabase/rls.sql        # row level security
-psql "$DATABASE_URL" -f supabase/realtime.sql   # optional: live updates
-npm run db:seed                # 12 scholarships + 3 demo accounts
-npm run verify:deploy          # confirm the target is actually ready
-npm run dev
+```text
+backend/src/main/java/com/scholarai/
+  aid/            Financial-aid programs, eligibility and payment lifecycle
+  account/        Account profiles and roles
+  student/        Academic profiles, validation and improvement roadmaps
+  scholarship/    Scholarship model, eligibility and matching
+  scoring/        Weighted profile scores and fraud signals
+  application/    Apply, withdraw, save and freeze application scores
+  institution/    Publish programs, review applicants and view aggregates
+  admin/          User management, platform statistics and audit history
+  document/       Income, marksheet and identity verification
+  resume/         Resume skills, scores and suggestions
+  chat/           Scholarship copilot context and deterministic answers
+  storage/        Repository interface, JDBC implementation and demo seed
+  http/           Routes to the modules
+src/
+  app/            Existing pages, forms and animations
+  components/     Existing shared UI
+  lib/java/       Thin server-side bridge to Java
+  lib/datasource/ Frontend data contracts and Java adapter
 ```
 
-`DEPLOYMENT.md` has the full walkthrough, including the Vercel steps and the problems worth knowing about before you hit them.
+Start reading at `backend/src/main/java/com/scholarai/Main.java`, then `http/PlatformApi.java`, and then the module you want to understand. See [OOP_GUIDE.md](OOP_GUIDE.md) for the actual inheritance, encapsulation, abstraction and polymorphism examples.
 
-### Demo accounts (live mode, created by `npm run db:seed`)
+## Data and integrations
 
-| Email | Role |
-|---|---|
-| `student@demo.scholarai.app` | student |
-| `institution@demo.scholarai.app` | institution |
-| `admin@demo.scholarai.app` | admin |
+- **H2 through JDBC** stores data locally under `backend/data/demo/` or `backend/data/live/`. A restart preserves local data. The platform repository stores a small classroom dataset transactionally; financial aid retains its existing dedicated JDBC repository.
+- `backend/src/main/resources/demo-data.json` contains the original twelve scholarships, student and applicant queue. Java seeds a new database once; subsequent starts retain edits. Dates remain the original dates, including expired scholarships.
+- **Supabase Auth** remains an optional password/session provider. Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for authenticated mode. Registration creates the corresponding account in Java. `SUPABASE_SERVICE_ROLE_KEY` enables the existing private document storage integration.
+- **PDF extraction** stays in the frontend server adapter using `unpdf`; Java performs verification and resume scoring. Image-only documents remain pending; there is no OCR service pretending to verify them.
+- **Anthropic** remains optional through `ANTHROPIC_API_KEY`. Without it, the Java copilot supplies the original deterministic responses.
+- **No Postgres/Drizzle setup is required.** This rebuild replaces that data layer; it does not automatically import records from an older Postgres installation. The existing public demo has no hosted database to migrate.
 
-Password for all three: `scholarai-demo`
+## Commands
 
-Seeding these accounts requires `SUPABASE_SERVICE_ROLE_KEY`; without it the script seeds scholarships only and says so. Change or delete these accounts before exposing a deployment publicly.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start Java and the frontend together |
+| `npm run build:java` | Test and package Java |
+| `npm run build` | Build the frontend; no running Java server needed |
+| `npm start` | Start both services with the built frontend |
+| `npm run test:java` | Java rules, parity, persistence and workflow tests |
+| `npm test` | Frontend transport, rate-limit and aid-action tests |
+| `npm run typecheck` | Check frontend types |
+| `npm run lint` | Check frontend code |
+| `npm run verify:deploy` | Check a running Java service and signed catalogue request |
 
-## The scoring model
+The Vercel demo continues to use the existing container configuration, which runs both services together. Container data is temporary and can reset when the container is replaced. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
-Ten weighted signals, defined in the `WEIGHTS` array in `src/lib/ai-engine.ts`. The admin dashboard imports that same array rather than restating it, so the registry cannot drift from the engine.
+## Reference
 
-| Signal | Weight | Input |
-|---|---|---|
-| Academic Performance | 22% | CGPA (80%) + attendance (20%) |
-| Financial Need | 18% | family income on a log-need curve |
-| Achievements | 12% | awards, hackathons, sports level |
-| Research Output | 10% | peer-reviewed publications |
-| Leadership | 8% | verified leadership roles |
-| Projects & Skills | 8% | projects, certifications, skill count |
-| Statement of Purpose | 8% | SOP quality score |
-| Community Service | 7% | volunteer hours |
-| Recommendations | 4% | aggregate recommender strength |
-| Behaviour & Integrity | 3% | institution conduct score |
-
-Weights sum to 1.00. On top of the base score the engine applies hard eligibility gates (CGPA floor, income cap, attendance, research/leadership/sports requirements, location and field restrictions), a category affinity adjustment, and a win-probability estimate that factors in applicants-per-seat.
-
-Gender, minority status and disability are used **only** where a scholarship explicitly targets or prefers those groups — never as a penalty. Every match result carries a `fairnessNote` stating this.
-
-Scores are frozen. When a student submits, the engine's verdict is written into `applications.ai_snapshot` and institutions rank on that snapshot, so a later profile edit cannot retroactively change the basis for a decision.
-
-## Stack
-
-Next.js 16 (App Router, Server Components, server actions) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (Auth, Postgres, Storage, Realtime) · Drizzle ORM + drizzle-kit · Zod · GSAP + Lenis + Framer Motion · Recharts · Lucide · Vitest · optional Anthropic SDK for the copilot
-
-## npm scripts
-
-| Script | What it does |
-|---|---|
-| `npm run dev` | dev server |
-| `npm run build` | production build |
-| `npm start` | serve the production build |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest, single run |
-| `npm run test:watch` | Vitest in watch mode |
-| `npm run test:coverage` | Vitest with v8 coverage |
-| `npm run db:generate` | generate a migration from `src/lib/db/schema.ts` |
-| `npm run db:migrate` | apply migrations in `drizzle/` |
-| `npm run db:seed` | seed 12 scholarships and the 3 demo accounts |
-| `npm run verify:deploy` | pass/fail readiness check against a live target |
-
-Tests are pure-logic suites under `src/**/__tests__/` — no DOM, no network, no database (`vitest.config.ts`).
-
-## Environment variables
-
-See `.env.example` for the full contract. `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` reach the browser by design; `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL` and `ANTHROPIC_API_KEY` are server-only and must never be given a `NEXT_PUBLIC_` prefix.
-
-Without `ANTHROPIC_API_KEY` the copilot and resume suggestions fall back to the deterministic engine — a supported configuration, not a degraded one.
-
-## Accessibility
-
-`prefers-reduced-motion` is respected across the loader, smooth scroll, tilt and cursor effects. Controls are keyboard-navigable and labelled, with ARIA on gauges and dialogs. Animations stay on transform and opacity. Full WCAG conformance would need manual testing with assistive technology and an expert review, which has not been done.
-
-## Further reading
-
-- [`DEPLOYMENT.md`](./DEPLOYMENT.md) — Vercel + Supabase step by step, and the real problems hit while building this
-- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — the DataSource seam, the auth layers, and a traced request lifecycle
-- [`SECURITY.md`](./SECURITY.md) — threat model, enforcement layers, and honest limitations
-- [`supabase/rls-test.sql`](./supabase/rls-test.sql) — runnable proof that the RLS boundaries hold
+The original interface comes from [ishu7w/ScholarAI](https://github.com/ishu7w/ScholarAI). This project lives in the separate [scholarship-financial-aid-system](https://github.com/ishu7w/scholarship-financial-aid-system) repository.

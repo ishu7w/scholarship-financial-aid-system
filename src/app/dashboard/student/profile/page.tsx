@@ -11,7 +11,7 @@ export default async function ProfilePage() {
 
   const ds = await getDataSource();
   const profile = await ds.getStudentProfile(me.id);
-  const score = profile ? computeAIScore(profile) : null;
+  const score = profile ? await computeAIScore(profile) : null;
 
   return (
     <DashboardShell
@@ -20,7 +20,7 @@ export default async function ProfilePage() {
     >
       <ProfileForm
         profile={profile}
-        name={me.name}
+        name={profile?.name ?? me.name}
         currentScore={score?.total ?? null}
         readOnly={ds.mode === "demo"}
       />

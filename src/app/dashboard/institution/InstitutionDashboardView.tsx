@@ -117,7 +117,7 @@ export default function InstitutionDashboardView({
   // socket carries nothing this account could not read anyway.
   //
   // The default reaction (router.refresh()) re-runs the server component
-  // that ranks the queue through ai-engine.ts — the ranking is never
+  // that reads the Java-ranked queue — the ranking is never
   // recomputed client-side, so a live row is scored the same way a
   // refreshed one is. No-ops in demo mode.
   useRealtime("applications", null, undefined, { events: QUEUE_EVENTS });
