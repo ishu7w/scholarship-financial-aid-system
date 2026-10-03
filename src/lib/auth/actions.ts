@@ -1,11 +1,12 @@
 "use server";
 
 // ─────────────────────────────────────────────────────────────
-// Auth server actions. In demo mode (no Supabase env) every
-// action succeeds without persistence — preserving the original
-// "any credentials work" demo behavior.
+// Auth server actions. Demo mode selects explicit sample personas;
+// live mode verifies credentials with Supabase.
 // ─────────────────────────────────────────────────────────────
 
+import { cookies } from "next/headers";
+import { DEMO_COOKIE, DEMO_ACCOUNTS } from "./demo";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { getSupabaseServer, getSupabaseAdmin } from "@/lib/supabase/server";
@@ -63,7 +64,7 @@ export async function signUpAction(input: unknown): Promise<AuthResult> {
   );
   if (!gate.allowed) return { ok: false, error: throttled(gate.retryAfterMs) };
 
-  if (!isLiveMode()) return { ok: true }; // demo mode: simulated success
+  if (!isLiveMode()) return { ok: false, error: "This is the demonstration workspace. Sign in with one of the sample accounts on the login page." };
 
   const supabase = await getSupabaseServer();
   if (!supabase) return { ok: false, error: "Auth service unavailable" };
@@ -136,7 +137,12 @@ export async function signInAction(input: unknown): Promise<SignInResult> {
   );
   if (!gate.allowed) return { ok: false, error: throttled(gate.retryAfterMs) };
 
-  if (!isLiveMode()) return { ok: true, redirectTo: "/dashboard/student" };
+  if (!isLiveMode()) {
+    const account = Object.values(DEMO_ACCOUNTS).find(account => account.email === parsed.data.email.toLowerCase());
+    if (!account || parsed.data.password !== "scholarai-demo")
+      return { ok: false, error: "Choose a demo account below, or use its email with password scholarai-demo." };
+    return enterDemoAction(account.role);
+  }
 
   const supabase = await getSupabaseServer();
   if (!supabase) return { ok: false, error: "Auth service unavailable" };
@@ -164,7 +170,8 @@ export async function signOutAction(): Promise<void> {
     const supabase = await getSupabaseServer();
     await supabase?.auth.signOut();
   }
-  redirect("/");
+  if (!isLiveMode()) (await cookies()).set(DEMO_COOKIE, "signed-out", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 86400 });
+  redirect("/login");
 }
 
 export async function resetPasswordAction(email: string): Promise<AuthResult> {
@@ -181,11 +188,20 @@ export async function resetPasswordAction(email: string): Promise<AuthResult> {
   );
   if (!gate.allowed) return { ok: false, error: throttled(gate.retryAfterMs) };
 
-  if (!isLiveMode()) return { ok: true };
+  if (!isLiveMode()) return { ok: false, error: "Demo accounts use the password scholarai-demo. No reset email is sent." };
 
   const supabase = await getSupabaseServer();
   if (!supabase) return { ok: false, error: "Auth service unavailable" };
   const { error } = await supabase.auth.resetPasswordForEmail(check.data);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+/** Public sample personas are available only in the demonstration workspace. */
+export async function enterDemoAction(role: string): Promise<SignInResult> {
+  if (isLiveMode()) return { ok: false, error: "Demo accounts are unavailable. Sign in with your account." };
+  if (role !== "student" && role !== "institution" && role !== "admin")
+    return { ok: false, error: "Choose a valid demo account." };
+  (await cookies()).set(DEMO_COOKIE, role, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 86400, secure: process.env.NODE_ENV === "production" });
+  return { ok: true, redirectTo: `/dashboard/${role}` };
 }

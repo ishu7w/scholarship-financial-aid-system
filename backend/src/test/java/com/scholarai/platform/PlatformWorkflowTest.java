@@ -48,6 +48,14 @@ class PlatformWorkflowTest {
   }
 
   @Test
+  void publicDemoCannotDisableOrChangeSampleAccounts() {
+    Principal admin = new Principal("adm-root", "Platform Admin", "admin", true);
+    ObjectNode input = json.createObjectNode().put("userId", "stu-aarya").put("disabled", true).put("role", "admin");
+    assertEquals(403, assertThrows(AidException.class, () -> call(admin, "admin-disabled", input)).status());
+    assertEquals(403, assertThrows(AidException.class, () -> call(admin, "admin-role", input)).status());
+  }
+
+  @Test
   void catalogueAndInstitutionQueuePreserveSeed() {
     assertEquals(12, call(student, "scholarships", json.createObjectNode()).size());
     assertEquals(60, call(institution, "institution-applicants", id("demo-institution")).size());

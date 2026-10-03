@@ -13,7 +13,7 @@ npm run dev
 
 Open **http://localhost:3000**. The command builds and starts Java on port 8080, waits for it to become ready, and starts the frontend. It creates a private signing key in the ignored `.env.local` file automatically. No hosted database is needed for the classroom demo.
 
-The original demo persona is Aarya Sharma. Demo login and registration keep their existing simulated behaviour. The existing role guards and read-only institution/admin demo controls are retained. For authenticated accounts, Supabase still handles passwords and cookies; Java stores profiles and roles.
+The login page offers Student, Institution and Admin demo accounts. Student applications, document uploads, institution decisions and financial-aid review work with the Java backend. Demo registration and password recovery clearly direct users to the sample accounts instead of pretending to create accounts or send email. The admin sample roster is fixed. Follow [DEMO_WALKTHROUGH.md](DEMO_WALKTHROUGH.md) for a presentation. For real accounts, Supabase handles passwords and cookies; Java stores profiles and roles.
 
 ## Module structure
 

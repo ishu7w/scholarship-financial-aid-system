@@ -1,4 +1,6 @@
 import "server-only";
+import { cookies } from "next/headers";
+import { DEMO_COOKIE, demoAccount } from "./demo";
 import { cache } from "react";
 import { getSupabaseServer } from "@/lib/supabase/server";
 import { isLiveMode } from "@/lib/env";
@@ -12,19 +14,10 @@ export interface SessionProfile {
   avatarHue: number;
 }
 
-// Demo persona — mirrors the original hardcoded UI identity.
-const DEMO_SESSION: SessionProfile = {
-  id: "stu-aarya",
-  role: "student",
-  name: "Aarya Sharma",
-  email: "aarya@university.edu",
-  avatarHue: 258,
-};
-
 /** Current signed-in profile; demo persona in demo mode; null when
  *  live and signed out. Cached per request. */
 export const getSessionProfile = cache(async (): Promise<SessionProfile | null> => {
-  if (!isLiveMode()) return DEMO_SESSION;
+  if (!isLiveMode()) return demoAccount((await cookies()).get(DEMO_COOKIE)?.value);
 
   const supabase = await getSupabaseServer();
   if (!supabase) return null;

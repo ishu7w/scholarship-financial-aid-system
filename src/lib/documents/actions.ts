@@ -1,15 +1,11 @@
 import "server-only";
 
-// ─────────────────────────────────────────────────────────────
-// Document storage + persistence.
-//
-// Files live in a PRIVATE Supabase Storage bucket, namespaced per
-// user (`${userId}/…`). The owning user id always comes from the
-// session — a client-declared id is never trusted. Institutions read
-// verification results through RLS; no storage path or signed URL is
-// ever handed to a non-owner.
-// ─────────────────────────────────────────────────────────────
+// Private file adapters: temporary disk storage for the demonstration,
+// Supabase Storage for real accounts. Java verifies and owns document records.
 
+import { randomUUID } from "node:crypto";
+import { isLiveMode } from "@/lib/env";
+import { putLocalDocument, removeLocalDocument } from "./local-storage";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { javaRequest, javaAction } from "@/lib/java/client";
@@ -77,9 +73,9 @@ export type DocumentActionResult =
   | { ok: true; document: DocumentRecord }
   | { ok: false; error: string };
 
-/** True when both a storage backend and a database are configured. */
+/** Demo storage is local; real accounts require the private cloud bucket. */
 export async function canUpload(): Promise<boolean> {
-  return Boolean(getSupabaseAdmin());
+  return !isLiveMode() || Boolean(getSupabaseAdmin());
 }
 
 /**
@@ -108,14 +104,14 @@ export async function ensureDocumentsBucket(): Promise<
   return { ok: true };
 }
 
-/** `${userId}/${kind}-${timestamp}.${ext}` — the user id is the namespace. */
+/** Each upload has a unique filename inside the session owner namespace. */
 export function buildStoragePath(
   userId: string,
   kind: DocumentKind,
   mimeType: string
 ): string {
   const ext = EXTENSION_BY_MIME[mimeType] ?? "bin";
-  return `${userId}/${kind}-${Date.now()}.${ext}`;
+  return `${userId}/${kind}-${randomUUID()}.${ext}`;
 }
 
 /** Uploads to the private bucket. `userId` must come from the session. */
@@ -125,6 +121,15 @@ export async function putDocumentObject(
   bytes: Uint8Array,
   mimeType: string
 ): Promise<{ ok: true; storagePath: string } | { ok: false; error: string }> {
+  if (!isLiveMode()) {
+    const storagePath = buildStoragePath(userId, kind, mimeType);
+    try {
+      await putLocalDocument(storagePath, bytes);
+      return { ok: true, storagePath };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "Could not store this sample document" };
+    }
+  }
   const admin = getSupabaseAdmin();
   if (!admin) return { ok: false, error: STORAGE_UNAVAILABLE };
 
@@ -175,7 +180,8 @@ export async function storeAndVerifyDocument(args: {
     mimeType: args.mimeType, byteSize: args.bytes.byteLength, text,
   });
   if ("ok" in result && !result.ok) {
-    await getSupabaseAdmin()?.storage.from(DOCUMENTS_BUCKET).remove([put.storagePath]);
+    if (!isLiveMode()) await removeLocalDocument(put.storagePath);
+    else await getSupabaseAdmin()?.storage.from(DOCUMENTS_BUCKET).remove([put.storagePath]);
     return result;
   }
   revalidatePath("/dashboard/student/documents");
@@ -194,10 +200,15 @@ export async function deleteOwnDocument(ownerId: string, documentId: string): Pr
   if (!me || me.id !== ownerId) return { ok: false, error: "Sign in to manage your documents" };
   const row = (await listMyDocuments()).find(item => item.id === documentId);
   if (!row) return { ok: false, error: "Document not found" };
-  const admin = getSupabaseAdmin();
-  if (!admin) return { ok: false, error: STORAGE_UNAVAILABLE };
-  const { error } = await admin.storage.from(DOCUMENTS_BUCKET).remove([row.storagePath]);
-  if (error) return { ok: false, error: "Could not remove the stored file" };
+  if (!isLiveMode()) {
+    try { await removeLocalDocument(row.storagePath); }
+    catch { return { ok: false, error: "Could not remove the stored file" }; }
+  } else {
+    const admin = getSupabaseAdmin();
+    if (!admin) return { ok: false, error: STORAGE_UNAVAILABLE };
+    const { error } = await admin.storage.from(DOCUMENTS_BUCKET).remove([row.storagePath]);
+    if (error) return { ok: false, error: "Could not remove the stored file" };
+  }
   const result = await javaAction<{ ok: true }>("document-delete", { id: documentId });
   if (result.ok) revalidatePath("/dashboard/student/documents");
   return result;

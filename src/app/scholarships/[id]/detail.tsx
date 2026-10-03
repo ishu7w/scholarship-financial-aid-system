@@ -44,6 +44,8 @@ export default function ScholarshipDetail({
 
   // No profile → no invented numbers. Show the program, not a fake score.
   const applied = Boolean(application && application.status !== "draft");
+  const decided = application?.status === "approved" || application?.status === "rejected";
+  const deadlinePassed = scholarship.deadline < new Date().toISOString().slice(0, 10);
 
   const onApply = () => {
     setError(null);
@@ -255,7 +257,7 @@ export default function ScholarshipDetail({
               {canApply && match ? (
                 <button
                   onClick={onApply}
-                  disabled={pending || (!applied && !match.eligible)}
+                  disabled={pending || decided || (!applied && (!match.eligible || deadlinePassed))}
                   className={applied ? "btn-ghost mt-5 w-full" : "btn-primary mt-5 w-full"}
                 >
                   {pending ? (
@@ -263,8 +265,12 @@ export default function ScholarshipDetail({
                       <Loader2 className="h-4 w-4 animate-spin" />
                       {applied ? "Withdrawing…" : "Submitting…"}
                     </>
+                  ) : decided ? (
+                    `Application ${application?.status}`
                   ) : applied ? (
                     "Withdraw application"
+                  ) : deadlinePassed ? (
+                    "Applications closed"
                   ) : match.eligible ? (
                     <>
                       Apply now <ChevronRight className="h-4 w-4" />

@@ -32,7 +32,7 @@ A frontend-only deployment cannot execute these Java modules. Keep the supplied 
 
 Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`. Supabase verifies credentials and issues session cookies. Java stores the account role, disabled state and academic profile. Public registration accepts student and institution accounts only; it cannot create administrators.
 
-`SUPABASE_SERVICE_ROLE_KEY` enables the existing private Supabase document bucket and direct registration flow. The Next.js server extracts PDF text; Java checks the content against the owner's stored profile. Without a storage provider, the original demo upload-unavailable behaviour remains. Pasted resume text still works.
+`SUPABASE_SERVICE_ROLE_KEY` enables the existing private Supabase document bucket and direct registration flow. The Next.js server extracts PDF text; Java checks the content against the owner's stored profile. Demo mode stores uploads privately inside `AID_DATA_DIR/documents` (temporary on Vercel), with a maximum of 25 documents per sample account. Real authenticated accounts still require Supabase Storage. Pasted resume text also works.
 
 `ANTHROPIC_API_KEY` optionally enables the external copilot adapter. The fallback answers come from Java.
 

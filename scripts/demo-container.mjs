@@ -13,7 +13,7 @@ const env = {
   PORT: process.env.PORT || "80",
   HOSTNAME: "0.0.0.0",
 };
-// This image intentionally runs the original no-account demo mode.
+// This image runs the public sample-account demonstration.
 delete env.NEXT_PUBLIC_SUPABASE_URL;
 delete env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 delete env.DATABASE_URL;

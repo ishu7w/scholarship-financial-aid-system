@@ -159,7 +159,7 @@ export default function InstitutionDashboardView({
           <motion.div variants={item} className="hairline flex items-center gap-3 px-4 py-3">
             <span className="h-2 w-2 shrink-0 bg-primary" aria-hidden />
             <span className="mono-label text-muted">
-              Demo mode — decisions are not persisted. Connect a database to record them.
+              Sign in with the institution demo account to review applications.
             </span>
           </motion.div>
         )}
