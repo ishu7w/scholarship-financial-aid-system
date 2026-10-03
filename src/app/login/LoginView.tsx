@@ -106,7 +106,7 @@ function LoginForm({ demoEnabled }: { demoEnabled: boolean }) {
           <p className="mb-3 text-center text-xs text-muted">Try the demonstration with a sample account</p>
           <div className="flex flex-wrap gap-2">
             {(["student", "institution", "admin"] as const).map(role => (
-              <button key={role} type="button" disabled={loading} className="btn-secondary flex-1 capitalize" onClick={async () => {
+              <button key={role} type="button" disabled={loading} className="btn-ghost flex-1 !px-3 !py-3 !text-xs disabled:opacity-50" onClick={async () => {
                 setLoading(true); setError(null);
                 try {
                   const result = await enterDemoAction(role);
