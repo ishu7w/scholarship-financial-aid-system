@@ -27,14 +27,24 @@ public final class Main {
     Path directory = Path.of(env.getOrDefault("AID_DATA_DIR", "data")).toAbsolutePath();
     Files.createDirectories(directory);
     ObjectMapper json = json();
-    var repository =
-        new JdbcAidRepository(
-            "jdbc:h2:file:" + directory.resolve("financial-aid") + ";DB_CLOSE_ON_EXIT=FALSE", json);
-    var platformRepository =
-        new com.scholarai.storage.JdbcPlatformRepository(
-            "jdbc:h2:file:" + directory.resolve("platform") + ";DB_CLOSE_ON_EXIT=FALSE",
-            json,
-            com.scholarai.storage.DemoData.load(json));
+    com.scholarai.aid.repository.AidRepository repository;
+    com.scholarai.storage.PlatformRepository platformRepository;
+    String remoteUrl = env.get("DEMO_STORAGE_URL"), remoteKey = env.get("DEMO_STORAGE_KEY");
+    if (remoteUrl != null && remoteKey != null) {
+      platformRepository = new com.scholarai.storage.RemotePlatformRepository(
+          json, remoteUrl, remoteKey, "scholarships", com.scholarai.storage.DemoData.load(json));
+      var aidSeed = json.createObjectNode();
+      aidSeed.putArray("applications");
+      repository = new com.scholarai.aid.repository.SharedAidRepository(
+          new com.scholarai.storage.RemotePlatformRepository(json, remoteUrl, remoteKey, "financial-aid", aidSeed), json);
+    } else {
+      if (env.containsKey("VERCEL")) throw new IllegalStateException("Hosted demo requires shared storage configuration");
+      repository = new JdbcAidRepository(
+          "jdbc:h2:file:" + directory.resolve("financial-aid") + ";DB_CLOSE_ON_EXIT=FALSE", json);
+      platformRepository = new com.scholarai.storage.JdbcPlatformRepository(
+          "jdbc:h2:file:" + directory.resolve("platform") + ";DB_CLOSE_ON_EXIT=FALSE", json,
+          com.scholarai.storage.DemoData.load(json));
+    }
     var platform = new com.scholarai.http.PlatformApi(json, platformRepository);
     var server =
         new AidHttpServer(

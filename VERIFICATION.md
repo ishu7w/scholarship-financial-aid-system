@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-- **65 Java tests pass** under JDK 21 with Java 17 compilation compatibility, including the retained financial-aid tests.
+- **67 Java tests pass** under JDK 21 with Java 17 compilation compatibility, including the retained financial-aid tests.
 - **33 frontend tests pass**, covering signed Java transport, financial-aid server actions and authentication throttles.
 - Type checking and ESLint pass without errors or warnings.
 - The production Next.js build passes without needing a running Java service during compilation.
@@ -43,3 +43,5 @@ Browser checks now also cover switching between the three demo roles, uploading 
 See `DEMO_WALKTHROUGH.md` for the presentation sequence and sample-account limitations.
 
 The production-mode browser run also confirmed profile save/reload, institution program creation/editing/closure, and a 390-pixel login layout without horizontal overflow.
+
+Shared storage is tested with two repository instances, concurrent-write retries, credential rejection, duplicate aid submissions and stale-version rejection. The resumed free database has an isolated demo state/configuration table; existing project tables are preserved.

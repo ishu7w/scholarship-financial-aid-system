@@ -69,3 +69,5 @@ The Vercel demo continues to use the existing container configuration, which run
 ## Reference
 
 The original interface comes from [ishu7w/ScholarAI](https://github.com/ishu7w/ScholarAI). This project lives in the separate [scholarship-financial-aid-system](https://github.com/ishu7w/scholarship-financial-aid-system) repository.
+
+The hosted demonstration uses the shared-storage Java adapter to keep application, profile, decision and document-verification records consistent across Vercel containers. Local offline mode uses H2. See [hosted-demo/README.md](hosted-demo/README.md) for the connection setup.
