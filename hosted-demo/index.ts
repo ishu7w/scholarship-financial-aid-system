@@ -1,3 +1,10 @@
+// This file runs in Deno rather than the Next.js Node runtime.
+declare const Deno: {
+  env: { get(name: string): string | undefined };
+  serve(handler: (request: Request) => Response | Promise<Response>): void;
+};
+export {};
+
 // Supabase Edge Function. Only a digest is stored in a private configuration row;
 // the matching secret lives in the Java server environment.
 const headers = { "Content-Type": "application/json" };
