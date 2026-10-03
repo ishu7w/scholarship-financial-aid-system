@@ -96,7 +96,7 @@ export default function ScholarshipForm({
         <div className="hairline mb-8 flex items-center gap-3 px-4 py-3">
           <span className="h-2 w-2 shrink-0 bg-primary" aria-hidden />
           <span className="mono-label text-muted">
-            Demo workspace — profile changes are shared and may reset online.
+            Demo workspace — program changes are shared and may reset online.
           </span>
         </div>
       )}

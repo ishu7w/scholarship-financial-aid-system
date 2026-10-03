@@ -25,7 +25,7 @@ export default async function InstitutionDashboardPage() {
       orgName={institution.orgName}
       applicants={ranked}
       aggregates={aggregates}
-      readOnly={ds.mode === "demo"}
+      readOnly={me.role !== "institution" && me.role !== "admin"}
     />
   );
 }

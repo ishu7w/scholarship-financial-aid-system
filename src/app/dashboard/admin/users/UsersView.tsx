@@ -66,7 +66,7 @@ export default function UsersView({
         <div className="hairline flex items-center gap-3 px-4 py-3">
           <span className="h-2 w-2 shrink-0 bg-primary" aria-hidden />
           <span className="mono-label text-muted">
-            Demo mode — the seeded roster. Changes are not persisted.
+            Sample accounts are fixed for the demonstration. User management is available with real accounts.
           </span>
         </div>
       )}
@@ -181,7 +181,7 @@ export default function UsersView({
                         <span className="sr-only">Role for {u.email}</span>
                         <select
                           value={u.role}
-                          disabled={busy}
+                          disabled={busy || mode === "demo"}
                           onChange={(e) =>
                             run(u.id, () =>
                               setUserRoleAction({
@@ -213,7 +213,7 @@ export default function UsersView({
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
-                        disabled={busy || (isSelf && !u.disabled)}
+                        disabled={busy || mode === "demo" || (isSelf && !u.disabled)}
                         title={
                           isSelf && !u.disabled
                             ? "You cannot disable your own admin account"

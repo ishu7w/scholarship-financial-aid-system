@@ -105,8 +105,7 @@ async function handleFile(
     );
   }
 
-  // Demo mode has nowhere to put the file. The paste and sample paths
-  // still work, so say exactly what is missing instead of failing vaguely.
+  // Demo files use private local storage; real accounts require cloud storage.
   if (!(await canUpload())) {
     return NextResponse.json({ error: STORAGE_UNAVAILABLE }, { status: 503 });
   }

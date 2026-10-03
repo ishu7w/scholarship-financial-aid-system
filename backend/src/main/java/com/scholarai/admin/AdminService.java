@@ -107,6 +107,8 @@ public final class AdminService {
 
   public void updateUser(Principal user, JsonNode input, boolean changeRole) {
     role(user, "admin");
+    if (user.demo())
+      throw new AidException(403, "Sample accounts are fixed for the demonstration.");
     String id = text(input, "userId", 1, 200);
     repository.update(
         state -> {
