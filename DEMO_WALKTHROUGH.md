@@ -18,4 +18,4 @@ From Institution → Programs → New program, create a program with a future de
 
 ## Running locally
 
-Install dependencies and build while online first, then run `npm start` and open `http://localhost:3000`. Keep the Java data folder to retain local records. The hosted Vercel container uses temporary storage: records and uploaded files may reset when the container restarts or is redeployed. Sample accounts work without email services; external AI and real authentication still need their providers.
+Install dependencies and build while online first, then run `npm start` and open `http://localhost:3000`. Keep the Java data folder to retain local records. Hosted profile, application, decision and document-verification records use the shared database and survive container changes. Original uploaded sample files remain temporary. The free database may pause after inactivity; resume it before a presentation if needed. Sample accounts work without email services; external AI and real authentication still need their providers.

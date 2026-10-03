@@ -49,3 +49,7 @@ The old `DATABASE_URL`, Drizzle migration and Postgres seeding commands are remo
 | `AID_ALLOW_DEMO` | Whether Java accepts signed demo identities; launcher chooses this from the auth configuration |
 
 The `AID_` names remain compatible with the existing deployment even though Java now serves the whole application's rules.
+
+## Shared demo records
+
+The public Vercel demo requires `DEMO_STORAGE_URL` and the private `DEMO_STORAGE_KEY` in both production and preview. The Edge Function stores two isolated datasets in the existing Scholar AI project; it authenticates the Java server before accessing them. Local H2 is the offline adapter. Original uploaded sample files remain temporary on each container, while their verification records persist.
